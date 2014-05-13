@@ -399,14 +399,41 @@ class TaggableBehavior extends ModelBehavior {
  * @return void
  */
 	public function deleteTagged(Model $model) {
+
 		extract($this->settings[$model->alias]);
 		$tagModel = $model->{$tagAlias};
-		$tagModel->{$taggedAlias}->deleteAll(
+
+		$tags = $tagModel->{$taggedAlias}->find('all',
+		    array(
+		      'conditions' => array(
+				$taggedAlias . '.model' => $model->name,
+				$taggedAlias . '.foreign_key' => $model->id,
+			  ),
+		      'fields' => array($taggedAlias . '.tag_id', $tagAlias . '.occurrence')
+		    )
+		  );
+
+
+	   $tagModel->{$taggedAlias}->deleteAll(
 			array(
 				$taggedAlias . '.model' => $model->name,
 				$taggedAlias . '.foreign_key' => $model->id,
 			)
 		);
+
+	   /*
+	    * decrement occurrence in tags model
+	   *
+	   */
+       if($tagModel->getAffectedRows() > 0){
+           foreach ($tags as $tag){
+               $model->{$tagAlias}->updateAll(
+               	    array($tagAlias . '.occurrence' => (int) $tag['Tag']['occurrence']-1),
+                    array($tagAlias . '.id' => $tag['Tagged']['tag_id'])
+               );
+           }
+        }
+
 	}
 
 /**
