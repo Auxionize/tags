@@ -32,6 +32,7 @@ class Tagged extends TagsAppModel {
  */
 	public $findMethods = array(
 		'cloud' => true,
+	    'cloudProductType' => true,
 		'tagged' => true
 	);
 
@@ -41,9 +42,13 @@ class Tagged extends TagsAppModel {
  * @var string
  */
 	public $belongsTo = array(
-		'Tag' => array(
+		/*'Tag' => array(
 			'className' => 'Tags.Tag'
-		)
+	    ),*/
+	   'ProductType' => array(
+	        'className' => 'ProductType',
+	        'foreignKey' => 'tag_id',
+	    )
 	);
 
 /**
@@ -131,6 +136,77 @@ class Tagged extends TagsAppModel {
 		}
 	}
 
+
+	public function _findCloudProductType($state, $query, $results = array()) {
+
+	    if ($state === 'before') {
+	        // Support old code without the occurrence cache
+	        if (!$this->ProductType->hasField('occurrence') || isset($query['occurrenceCache']) && $query['occurrenceCache'] === false) {
+	            $fields = 'Tagged.tag_id, ProductType.id, ProductType.identifier, ProductType.name, ProductType.keyname, ProductType.weight, COUNT(*) AS occurrence';
+	            $groupBy = array('Tagged.tag_id', 'ProductType.id', 'ProductType.identifier', 'ProductType.name', 'ProductType.keyname', 'ProductType.weight');
+	        } else {
+	            // This is related to https://github.com/CakeDC/tags/issues/10 to work around a limitation of postgres
+	            $field = $this->getDataSource()->fields($this->ProductType);
+	            $field = array_merge($field, $this->getDataSource()->fields($this, null, "Tagged.tag_id"));
+	            $fields = "DISTINCT " . join(',', $field);
+	            $groupBy = null;
+	        }
+	        $options = array(
+	            'minSize' => 10,
+	            'maxSize' => 20,
+	            'page' => '',
+	            'limit' => '',
+	            'order' => '',
+	            'joins' => array(),
+	            'offset' => '',
+	            'contain' => 'ProductType',
+	            'conditions' => array(),
+	            'fields' => $fields,
+	            'group' => $groupBy
+	        );
+
+	        foreach ($query as $key => $value) {
+	            if (!empty($value)) {
+	                $options[$key] = $value;
+	            }
+	        }
+	        $query = $options;
+
+	        if (isset($query['model'])) {
+	            $query['conditions'] = Set::merge($query['conditions'], array('Tagged.model' => $query['model']));
+	        }
+
+	        return $query;
+	    } elseif ($state == 'after') {
+	        if (!empty($results) && isset($results[0][0]['occurrence']) || isset($results[0]['ProductType']['occurrence'])) {
+	            // Support old code without the occurrence cache
+	            if (!$this->ProductType->hasField('occurrence')) {
+	                foreach ($results as $key => $result) {
+	                    $results[$key]['ProductType']['occurrence'] = $results[$key][0]['occurrence'];
+	                }
+	            } else {
+	                foreach ($results as $key => $result) {
+	                    $results[$key][0]['occurrence'] = $results[$key]['ProductType']['occurrence'];
+	                }
+	            }
+
+	            $weights = Set::extract($results, '{n}.ProductType.occurrence');
+	            $maxWeight = max($weights);
+	            $minWeight = min($weights);
+
+	            $spread = $maxWeight - $minWeight;
+	            if (0 == $spread) {
+	                $spread = 1;
+	            }
+
+	            foreach ($results as $key => $result) {
+	                $size = $query['minSize'] + (($result['ProductType']['occurrence'] - $minWeight) * (($query['maxSize'] - $query['minSize']) / ($spread)));
+	                $results[$key]['ProductType']['weight'] = ceil($size);
+	            }
+	        }
+	        return $results;
+	    }
+	}
 /**
  * Find all the Model entries tagged with a given tag
  *
@@ -180,7 +256,7 @@ class Tagged extends TagsAppModel {
 
 				if (!empty($query['by'])) {
 					$query['conditions'][] = array(
-						$this->Tag->alias . '.keyname' => $query['by']);
+						$this->ProductType->alias . '.keyname' => $query['by']);
 				}
 			}
 			return $query;

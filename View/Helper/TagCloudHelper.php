@@ -83,29 +83,13 @@ class TagCloudHelper extends AppHelper {
 			$size = $tag[$options['tagModel']]['size'] = ceil($size);
 
 			$cloud .= $this->_replace($options['before'], $size);
-            //$cloud .= $this->Html->link($tag[$options['tagModel']]['name'], $this->_tagUrl($tag, $options), array('id' => 'tag-' . $tag[$options['tagModel']]['id'])) . ' ';
-            $cloud .= $this->Html->link($this->_tagLink($tag, $options), $this->_tagUrl($tag, $options), array('id' => 'tag-' . $tag[$options['tagModel']]['id'])) . ' ';
+            $cloud .= $this->Html->link($tag[$options['tagModel']]['name'], $this->_tagUrl($tag, $options), array('id' => 'tag-' . $tag[$options['tagModel']]['id'])) . ' ';
             $cloud .= $this->_replace($options['after'], $size);
 
 		}
 
 		return $cloud;
 	}
-
-	/**
-     * add occurrence for tags link name if option  = true
-     *
-     *
-    */
-
-	protected function _tagLink($tag, $options){
-	    $link = $tag[$options['tagModel']]['name'];
-	    if($options['occurrence'] == true){
-	        $link .=  ' ' . '<span class="badge text-sm">'.$tag[$options['tagModel']]['occurrence']. '</span>';
-	    }
-	    return $link;
-    }
-
 
 
 
