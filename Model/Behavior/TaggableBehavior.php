@@ -405,7 +405,6 @@ class TaggableBehavior extends ModelBehavior {
 
 		extract($this->settings[$model->alias]);
 		$tagModel = $model->{$tagAlias};
-		debug($tagAlias);
 		$tags = $tagModel->{$taggedAlias}->find('all',
 		    array(
 		      'conditions' => array(
@@ -430,7 +429,6 @@ class TaggableBehavior extends ModelBehavior {
 	   */
        if($tagModel->getAffectedRows() > 0){
            foreach ($tags as $tag){
-               // look this $tagModel->{$taggedAlias}->updateAll(array('times_tagged' => 'times_tagged + 1'), array('Tagged.tag_id' => $alreadyTagged));
                $model->{$tagAlias}->updateAll(
                	    array($tagAlias . '.occurrence' => (int) $tag['ProductType']['occurrence']-1),
                     array($tagAlias . '.id' => $tag['Tagged']['tag_id'])

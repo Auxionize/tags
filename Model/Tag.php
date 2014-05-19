@@ -24,10 +24,10 @@ class Tag extends TagsAppModel {
  * @var array
  */
 	public $hasMany = array(
-		'UserTagged' => array(
+		/*'UserTagged' => array(
 			'className' => 'Tags.UserTagged',
 			'foreignKey' => 'tag_id'
-		)
+		) */
 	);
 
 /**
