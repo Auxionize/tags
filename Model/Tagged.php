@@ -32,7 +32,6 @@ class Tagged extends TagsAppModel {
  */
 	public $findMethods = array(
 		'cloud' => true,
-	    'cloudProductType' => true,
 		'tagged' => true
 	);
 
@@ -42,9 +41,6 @@ class Tagged extends TagsAppModel {
  * @var string
  */
 	public $belongsTo = array(
-		/*'Tag' => array(
-			'className' => 'Tags.Tag'
-	    ),*/
 	   'ProductType' => array(
 	        'className' => 'ProductType',
 	        'foreignKey' => 'tag_id',
@@ -67,77 +63,6 @@ class Tagged extends TagsAppModel {
  * @link https://github.com/CakeDC/tags/issues/10
  */
 	public function _findCloud($state, $query, $results = array()) {
-		if ($state === 'before') {
-			// Support old code without the occurrence cache
-			if (!$this->Tag->hasField('occurrence') || isset($query['occurrenceCache']) && $query['occurrenceCache'] === false) {
-				$fields = 'Tagged.tag_id, Tag.id, Tag.identifier, Tag.name, Tag.keyname, Tag.weight, COUNT(*) AS occurrence';
-				$groupBy = array('Tagged.tag_id', 'Tag.id', 'Tag.identifier', 'Tag.name', 'Tag.keyname', 'Tag.weight');
-			} else {
-				// This is related to https://github.com/CakeDC/tags/issues/10 to work around a limitation of postgres
-				$field = $this->getDataSource()->fields($this->Tag);
-				$field = array_merge($field, $this->getDataSource()->fields($this, null, "Tagged.tag_id"));
-				$fields = "DISTINCT " . join(',', $field);
-				$groupBy = null;
-			}
-			$options = array(
-				'minSize' => 10,
-				'maxSize' => 20,
-				'page' => '',
-				'limit' => '',
-				'order' => '',
-				'joins' => array(),
-				'offset' => '',
-				'contain' => 'Tag',
-				'conditions' => array(),
-				'fields' => $fields,
-				'group' => $groupBy
-			);
-
-			foreach ($query as $key => $value) {
-				if (!empty($value)) {
-					$options[$key] = $value;
-				}
-			}
-			$query = $options;
-
-			if (isset($query['model'])) {
-				$query['conditions'] = Set::merge($query['conditions'], array('Tagged.model' => $query['model']));
-			}
-
-			return $query;
-		} elseif ($state == 'after') {
-			if (!empty($results) && isset($results[0][0]['occurrence']) || isset($results[0]['Tag']['occurrence'])) {
-				// Support old code without the occurrence cache
-				if (!$this->Tag->hasField('occurrence')) {
-					foreach ($results as $key => $result) {
-						$results[$key]['Tag']['occurrence'] = $results[$key][0]['occurrence'];
-					}
-				} else {
-					foreach ($results as $key => $result) {
-						$results[$key][0]['occurrence'] = $results[$key]['Tag']['occurrence'];
-					}
-				}
-
-				$weights = Set::extract($results, '{n}.Tag.occurrence');
-				$maxWeight = max($weights);
-				$minWeight = min($weights);
-
-				$spread = $maxWeight - $minWeight;
-				if (0 == $spread) {
-					$spread = 1;
-				}
-
-				foreach ($results as $key => $result) {
-					$size = $query['minSize'] + (($result['Tag']['occurrence'] - $minWeight) * (($query['maxSize'] - $query['minSize']) / ($spread)));
-					$results[$key]['Tag']['weight'] = ceil($size);
-				}
-			}
-			return $results;
-		}
-	}
-
-
-	public function _findCloudProductType($state, $query, $results = array()) {
 
 	    if ($state === 'before') {
 	        // Support old code without the occurrence cache
@@ -175,7 +100,8 @@ class Tagged extends TagsAppModel {
 	        if (isset($query['model'])) {
 	            $query['conditions'] = Set::merge($query['conditions'], array('Tagged.model' => $query['model']));
 	        }
-
+	        //debug($query);
+	        //exit();
 	        return $query;
 	    } elseif ($state == 'after') {
 	        if (!empty($results) && isset($results[0][0]['occurrence']) || isset($results[0]['ProductType']['occurrence'])) {
@@ -224,8 +150,9 @@ class Tagged extends TagsAppModel {
  * @return mixed Query array if state is before, array of results or integer (count) if state is after
  */
 	public function _findTagged($state, $query, $results = array()) {
+
 		if ($state === 'before') {
-			if (isset($query['model']) && $Model = ClassRegistry::init($query['model'])) {
+		    if (isset($query['model']) && $Model = ClassRegistry::init($query['model'])) {
 				$this->bindModel(array(
 					'belongsTo' => array(
 						$Model->alias => array(
@@ -253,10 +180,9 @@ class Tagged extends TagsAppModel {
 						array_unshift($query['fields'], "DISTINCT " . join(',', $this->getDataSource()->fields($Model)));
 					}
 				}
-
 				if (!empty($query['by'])) {
 					$query['conditions'][] = array(
-						$this->ProductType->alias . '.keyname' => $query['by']);
+						$this->{$query['tagsModel']}->alias . '.keyname' => $query['by']);
 				}
 			}
 			return $query;
